@@ -84,9 +84,11 @@ class EclipseJDTLS(SolidLanguageServer):
         os.makedirs(shared_cache_location, exist_ok=True)
         os.makedirs(ws_dir, exist_ok=True)
         
-        # Convert shared_cache_location to URI format for cross-platform compatibility
-        # This is needed because JDTLS expects a proper URI format for the sharedIndexLocation property
-        shared_cache_uri = pathlib.Path(shared_cache_location).as_uri()
+        # Note: JDTLS v1.8.0 (Java 17 version) has a bug on Windows where it incorrectly handles
+        # the sharedIndexLocation path. Disable shared index on Windows for this version.
+        # See: The path gets mixed with URI format causing "Illegal char <:>" errors
+        is_windows = PlatformUtils.get_platform_id().value.startswith("win")
+        use_shared_index = not is_windows
 
         jre_path = self.runtime_dependency_paths.jre_path
         lombok_jar_path = self.runtime_dependency_paths.lombok_jar_path
@@ -149,8 +151,11 @@ class EclipseJDTLS(SolidLanguageServer):
         if lombok_jar_path is not None:
             cmd_parts.append(f'"-javaagent:{lombok_jar_path}"')
         
+        # Only add shared index location if not on Windows (workaround for JDTLS v1.8.0 bug)
+        if use_shared_index:
+            cmd_parts.append(f'"-Djdt.core.sharedIndexLocation={shared_cache_location}"')
+        
         cmd_parts.extend([
-            f'"-Djdt.core.sharedIndexLocation={shared_cache_uri}"',
             "-jar",
             f'"{jdtls_launcher_jar}"',
             "-configuration",
