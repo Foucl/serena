@@ -83,6 +83,10 @@ class EclipseJDTLS(SolidLanguageServer):
         shared_cache_location = str(PurePath(solidlsp_settings.ls_resources_dir, "lsp", "EclipseJDTLS", "sharedIndex"))
         os.makedirs(shared_cache_location, exist_ok=True)
         os.makedirs(ws_dir, exist_ok=True)
+        
+        # Convert shared_cache_location to URI format for cross-platform compatibility
+        # This is needed because JDTLS expects a proper URI format for the sharedIndexLocation property
+        shared_cache_uri = pathlib.Path(shared_cache_location).as_uri()
 
         jre_path = self.runtime_dependency_paths.jre_path
         lombok_jar_path = self.runtime_dependency_paths.lombok_jar_path
@@ -146,7 +150,7 @@ class EclipseJDTLS(SolidLanguageServer):
             cmd_parts.append(f'"-javaagent:{lombok_jar_path}"')
         
         cmd_parts.extend([
-            f'"-Djdt.core.sharedIndexLocation={shared_cache_location}"',
+            f'"-Djdt.core.sharedIndexLocation={shared_cache_uri}"',
             "-jar",
             f'"{jdtls_launcher_jar}"',
             "-configuration",
